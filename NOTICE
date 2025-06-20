@@ -1,0 +1,29 @@
+custom_RT-DETR 
+Copyright (c) 2024 HO TZU CHUN
+
+This is a modification based on the original RT-DETR project.
+
+ORIGINAL PROJECT INFORMATION:
+- Original Repository: https://github.com/lyuwenyu/RT-DETR
+- Original Authors: Yian Zhao, Wenyu Lv, Shangliang Xu, Jinman Wei, 
+                    Guanzhong Wang, Qingqing Dang, Yi Liu, Jie Chen
+- Original License: Apache License 2.0
+- Original Papers:
+  * "DETRs Beat YOLOs on Real-time Object Detection" (arXiv:2304.08069)
+  * "RT-DETRv2: Improved Baseline with Bag-of-Freebies for Real-Time Detection Transformer" (arXiv:2407.17140)
+
+ENHANCEMENTS IN THIS IMPLEMENTATION:
+- More convinent customization
+- Additional backbone network configurations (Swin Transformer, ConvNeXt) based on timm library
+- Enhanced utility scripts for model analysis and deployment
+- Optimized inference pipeline
+- Better documentation and usage examples
+
+NEW DEPENDENCIES:
+- timm>=0.9.0: Required for Swin Transformer and ConvNeXt backbone networks
+
+ACKNOWLEDGMENTS:
+This implementation would not be possible without the original RT-DETR work by lyuwenyu and the research team. All original copyright notices and licenses are preserved and respected.
+
+LICENSE:
+This project is licensed under the Apache License 2.0, inheriting from the original RT-DETR project. See the LICENSE file for details. 

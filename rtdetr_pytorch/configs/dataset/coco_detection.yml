@@ -1,14 +1,21 @@
+# dataset format:
+# data---train---images
+# data---train---annotations.json
+# data---val---images
+# data---val---annotations.json
+
 task: detection
 
-num_classes: 80
-remap_mscoco_category: True
+num_classes: # Your own number of classes + 1
+remap_mscoco_category: False
 
 train_dataloader: 
   type: DataLoader
   dataset: 
     type: CocoDetection
-    img_folder: ./dataset/coco/train2017/
-    ann_file: ./dataset/coco/annotations/instances_train2017.json
+    # Your own data path
+    img_folder: ./data/train/images
+    ann_file: ./data/train/annotations.json
     transforms:
       type: Compose
       ops: ~
@@ -22,8 +29,9 @@ val_dataloader:
   type: DataLoader
   dataset: 
     type: CocoDetection
-    img_folder: ./dataset/coco/val2017/
-    ann_file: ./dataset/coco/annotations/instances_val2017.json
+    # Your own data path
+    img_folder: ./data/val/images
+    ann_file: ./data/val/annotations.json
     transforms:
       type: Compose
       ops: ~ 

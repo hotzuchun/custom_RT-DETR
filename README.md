@@ -1,7 +1,7 @@
 English | [简体中文](README_cn.md)
 
 
-<h2 align="center">RT-DETR: DETRs Beat YOLOs on Real-time Object Detection</h2>
+<h2 align="center">RT-DETR: Enhanced Implementation for Real-time Object Detection</h2>
 <p align="center">
     <!-- <a href="https://github.com/lyuwenyu/RT-DETR/blob/main/LICENSE">
         <img alt="license" src="https://img.shields.io/badge/LICENSE-Apache%202.0-blue">
@@ -21,6 +21,9 @@ English | [简体中文](README_cn.md)
     <a href="https://arxiv.org/abs/2304.08069">
         <img alt="arXiv" src="https://img.shields.io/badge/arXiv-2304.08069-red">
     </a>
+    <a href="https://arxiv.org/abs/2407.17140">
+        <img alt="arXiv" src="https://img.shields.io/badge/arXiv-2407.17140-red">
+    </a>
     <a href="mailto: lyuwenyu@foxmail.com">
         <img alt="emal" src="https://img.shields.io/badge/contact_me-email-yellow">
     </a>
@@ -28,11 +31,106 @@ English | [简体中文](README_cn.md)
 
 ---
 
+## 📋 Important Notice
 
-This is the official implementation of papers 
-- [DETRs Beat YOLOs on Real-time Object Detection](https://arxiv.org/abs/2304.08069)
-- [RT-DETRv2: Improved Baseline with Bag-of-Freebies for Real-Time Detection Transformer](https://arxiv.org/abs/2407.17140)
+**This is an modification based on the original RT-DETR project by lyuwenyu.**
 
+- **Original Repository**: [lyuwenyu/RT-DETR](https://github.com/lyuwenyu/RT-DETR)
+- **Original Papers**: 
+  - [DETRs Beat YOLOs on Real-time Object Detection](https://arxiv.org/abs/2304.08069)
+  - [RT-DETRv2: Improved Baseline with Bag-of-Freebies for Real-Time Detection Transformer](https://arxiv.org/abs/2407.17140)
+- **License**: Apache 2.0 (inherited from original project)
+
+This implementation includes improvements and modifications while maintaining compatibility with the original RT-DETR architecture.
+
+## 🚀 What's New in This Implementation
+
+- More convinent customization
+- More backbone options
+
+## 📍 Implementation Details
+
+This repository contains an enhanced PyTorch implementation of RT-DETR with the following features:
+
+- **Backbone Networks**: ResNet, ConvNeXt (via timm), Swin Transformer (via timm) variants
+- **Training Support**: Single and multi-GPU training
+- **Export Support**: ONNX, TensorRT deployment
+- **Custom Dataset Support**: Easy adaptation for custom datasets
+
+## 🦄 Performance (Based on Original Paper)
+
+| Model | Input shape | Dataset | AP<sup>val</sup> | AP<sub>50</sub><sup>val</sup> | Params(M) | FLOPs(G) | T4 TensorRT FP16(FPS) |
+|:---:|:---:| :---:|:---:|:---:|:---:|:---:|:---:|
+| RT-DETR-R18 | 640 | COCO | 46.5 | 63.8 | 20 | 60 | 217 |
+| RT-DETR-R34 | 640 | COCO | 48.9 | 66.8 | 31 | 92 | 161 |
+| RT-DETR-R50 | 640 | COCO | 53.1 | 71.3 | 42 | 136 | 108 |
+| RT-DETR-R101 | 640 | COCO | 54.3 | 72.7 | 76 | 259 | 74 |
+
+## 🏃‍♂️ Quick Start
+
+### Installation
+```bash
+pip install -r rtdetr_pytorch/requirements.txt
+```
+
+**Note**: This implementation requires `timm>=0.9.0` for Swin Transformer and ConvNeXt backbone networks.
+
+### Training
+```bash
+# Single GPU training
+export CUDA_VISIBLE_DEVICES=0
+python rtdetr_pytorch/tools/train.py -c rtdetr_pytorch/configs/rtdetr/rtdetr_r50vd_6x_coco.yml
+
+# Multi-GPU training
+export CUDA_VISIBLE_DEVICES=0,1,2,3
+torchrun --nproc_per_node=4 rtdetr_pytorch/tools/train.py -c rtdetr_pytorch/configs/rtdetr/rtdetr_r50vd_6x_coco.yml
+```
+
+### Evaluation
+```bash
+export CUDA_VISIBLE_DEVICES=0,1,2,3
+torchrun --nproc_per_node=4 rtdetr_pytorch/tools/train.py -c rtdetr_pytorch/configs/rtdetr/rtdetr_r50vd_6x_coco.yml -r path/to/checkpoint --test-only
+```
+
+### Export ONNX
+```bash
+python rtdetr_pytorch/tools/export_onnx.py -c rtdetr_pytorch/configs/rtdetr/rtdetr_r18vd_6x_coco.yml -r path/to/checkpoint --check
+```
+
+## 📚 Citation
+
+If you use this implementation in your research, please cite the original papers:
+
+```bibtex
+@misc{lv2023detrs,
+      title={DETRs Beat YOLOs on Real-time Object Detection},
+      author={Yian Zhao and Wenyu Lv and Shangliang Xu and Jinman Wei and Guanzhong Wang and Qingqing Dang and Yi Liu and Jie Chen},
+      year={2023},
+      eprint={2304.08069},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV}
+}
+
+@misc{lv2024rtdetrv2improvedbaselinebagoffreebies,
+      title={RT-DETRv2: Improved Baseline with Bag-of-Freebies for Real-Time Detection Transformer}, 
+      author={Wenyu Lv and Yian Zhao and Qinyao Chang and Kui Huang and Guanzhong Wang and Yi Liu},
+      year={2024},
+      eprint={2407.17140},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2407.17140}, 
+}
+```
+
+## 🙏 Acknowledgments
+
+- **Original Authors**: Yian Zhao, Wenyu Lv, Shangliang Xu, Jinman Wei, Guanzhong Wang, Qingqing Dang, Yi Liu, Jie Chen
+- **Original Repository**: [lyuwenyu/RT-DETR](https://github.com/lyuwenyu/RT-DETR)
+- **License**: This project is based on the original RT-DETR implementation and inherits the Apache 2.0 license.
+
+## 📄 License
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details. This implementation is based on the original RT-DETR project by lyuwenyu, which is also licensed under Apache 2.0.
 
 <details>
 <summary>Fig</summary>
@@ -113,26 +211,3 @@ This is the official implementation of papers
 <div align="center">
   <img src="https://github.com/lyuwenyu/RT-DETR/assets/77494834/213cf795-6da6-4261-8549-11947292d3cb" width=500 >
 </div>
-
-## Citation
-If you use `RT-DETR` or `RTDETRv2` in your work, please use the following BibTeX entries:
-```
-@misc{lv2023detrs,
-      title={DETRs Beat YOLOs on Real-time Object Detection},
-      author={Yian Zhao and Wenyu Lv and Shangliang Xu and Jinman Wei and Guanzhong Wang and Qingqing Dang and Yi Liu and Jie Chen},
-      year={2023},
-      eprint={2304.08069},
-      archivePrefix={arXiv},
-      primaryClass={cs.CV}
-}
-
-@misc{lv2024rtdetrv2improvedbaselinebagoffreebies,
-      title={RT-DETRv2: Improved Baseline with Bag-of-Freebies for Real-Time Detection Transformer}, 
-      author={Wenyu Lv and Yian Zhao and Qinyao Chang and Kui Huang and Guanzhong Wang and Yi Liu},
-      year={2024},
-      eprint={2407.17140},
-      archivePrefix={arXiv},
-      primaryClass={cs.CV},
-      url={https://arxiv.org/abs/2407.17140}, 
-}
-```

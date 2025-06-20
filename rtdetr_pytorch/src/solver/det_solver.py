@@ -1,4 +1,18 @@
+"""
+Enhanced RT-DETR Implementation
+Based on the original RT-DETR project by lyuwenyu
+
+Original Repository: https://github.com/lyuwenyu/RT-DETR
+Original Authors: Yian Zhao, Wenyu Lv, Shangliang Xu, Jinman Wei, 
+                  Guanzhong Wang, Qingqing Dang, Yi Liu, Jie Chen
+Original License: Apache License 2.0
+
+This is an enhanced implementation with improvements and modifications
+while maintaining compatibility with the original RT-DETR architecture.
+"""
+
 '''
+
 by lyuwenyu
 '''
 import time 
@@ -41,12 +55,9 @@ class DetSolver(BaseSolver):
             self.lr_scheduler.step()
             
             if self.output_dir:
-                checkpoint_paths = [self.output_dir / 'checkpoint.pth']
-                # extra checkpoint before LR drop and every 100 epochs
-                if (epoch + 1) % args.checkpoint_step == 0:
-                    checkpoint_paths.append(self.output_dir / f'checkpoint{epoch:04}.pth')
-                for checkpoint_path in checkpoint_paths:
-                    dist.save_on_master(self.state_dict(epoch), checkpoint_path)
+                # 只保存最优检查点, 减少磁盘占用
+                if best_stat['epoch'] == epoch:
+                    dist.save_on_master(self.state_dict(epoch), self.output_dir / 'best.pth')
 
             module = self.ema.module if self.ema else self.model
             test_stats, coco_evaluator = evaluate(

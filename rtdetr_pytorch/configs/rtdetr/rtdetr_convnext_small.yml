@@ -1,0 +1,43 @@
+__include__: [
+  '../dataset/coco_detection.yml',
+  '../runtime.yml',
+  './include/dataloader.yml',
+  './include/optimizer.yml',
+  './include/rtdetr_convnext.yml',
+]
+
+output_dir: ./output/rtdetr_convnext_small
+
+ConvNeXt:
+  arch: 'small'
+  depths: [3, 3, 27, 3]
+  dims: [96, 192, 384, 768]
+  drop_path_rate: 0.2
+  
+HybridEncoder:
+  in_channels: [96, 192, 384]
+  hidden_dim: 256
+  expansion: 1.0
+
+RTDETRTransformer:
+  eval_idx: -1
+  num_decoder_layers: 4
+  num_denoising: 100
+
+optimizer:
+  type: AdamW
+  params: 
+    - 
+      params: '^(?=.*backbone)(?=.*norm).*$'
+      lr: 0.00001
+      weight_decay: 0.
+    - 
+      params: '^(?=.*backbone)(?!.*norm).*$'
+      lr: 0.00001
+    - 
+      params: '^(?=.*(?:encoder|decoder))(?=.*(?:norm|bias)).*$'
+      weight_decay: 0.
+
+  lr: 0.0001
+  betas: [0.9, 0.999]
+  weight_decay: 0.0001 

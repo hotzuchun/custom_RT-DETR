@@ -8,7 +8,7 @@ train_dataloader:
       ops:
         - {type: RandomPhotometricDistort, p: 0.5}
         - {type: RandomZoomOut, fill: 0}
-        - {type: RandomIoUCrop, p: 0.8}
+        - {type: RandomIoUCrop, p: 0.1}
         - {type: SanitizeBoundingBox, min_size: 1}
         - {type: RandomHorizontalFlip}
         - {type: Resize, size: [640, 640], }
@@ -19,8 +19,8 @@ train_dataloader:
         - {type: SanitizeBoundingBox, min_size: 1}
         - {type: ConvertBox, out_fmt: 'cxcywh', normalize: True}
   shuffle: True
-  batch_size: 4
-  num_workers: 4
+  batch_size: 16
+  num_workers: 6
   collate_fn: default_collate_fn
 
 
@@ -34,6 +34,6 @@ val_dataloader:
         - {type: ToImageTensor}
         - {type: ConvertDtype}
   shuffle: False
-  batch_size: 8
-  num_workers: 4
+  batch_size: 32
+  num_workers: 6
   collate_fn: default_collate_fn
