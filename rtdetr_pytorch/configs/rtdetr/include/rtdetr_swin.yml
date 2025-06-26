@@ -32,7 +32,7 @@ HybridEncoder:
   num_encoder_layers: 1
   nhead: 8
   dim_feedforward: 1024
-  dropout: 0.
+  dropout: 0.02
   enc_act: 'gelu'
   pe_temperature: 10000
   
@@ -50,9 +50,9 @@ RTDETRTransformer:
   hidden_dim: 256
   num_levels: 3
 
-  num_queries: 300
+  num_queries: 400
 
-  num_decoder_layers: 6
+  num_decoder_layers: 8
   num_denoising: 100
   
   eval_idx: -1

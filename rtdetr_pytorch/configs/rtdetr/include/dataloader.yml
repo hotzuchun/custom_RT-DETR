@@ -1,5 +1,3 @@
-# num_classes: 91
-# remap_mscoco_category: True
 
 train_dataloader: 
   dataset: 
@@ -18,7 +16,7 @@ train_dataloader:
         - {type: ConvertDtype}
         - {type: SanitizeBoundingBox, min_size: 1}
         - {type: ConvertBox, out_fmt: 'cxcywh', normalize: True}
-  shuffle: True
+  shuffle: True # whether to shuffle the dataset
   batch_size: 16
   num_workers: 6
   collate_fn: default_collate_fn
@@ -33,7 +31,7 @@ val_dataloader:
         - {type: Resize, size: [640, 640]}
         - {type: ToImageTensor}
         - {type: ConvertDtype}
-  shuffle: False
+  shuffle: True
   batch_size: 32
   num_workers: 6
   collate_fn: default_collate_fn

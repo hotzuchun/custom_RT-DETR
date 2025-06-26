@@ -1,16 +1,3 @@
-"""
-Enhanced RT-DETR Implementation
-Based on the original RT-DETR project by lyuwenyu
-
-Original Repository: https://github.com/lyuwenyu/RT-DETR
-Original Authors: Yian Zhao, Wenyu Lv, Shangliang Xu, Jinman Wei, 
-                  Guanzhong Wang, Qingqing Dang, Yi Liu, Jie Chen
-Original License: Apache License 2.0
-
-This is an enhanced implementation with improvements and modifications
-while maintaining compatibility with the original RT-DETR architecture.
-"""
-
 """by lyuwenyu
 
 """
@@ -49,6 +36,9 @@ class YAMLConfig(BaseConfig):
         self.autocast = cfg.get('autocast', dict())
         self.find_unused_parameters = cfg.get('find_unused_parameters', None)
         self.clip_max_norm = cfg.get('clip_max_norm', 0.)
+
+        # add num_classes attribute
+        self.num_classes = cfg.get('num_classes', 80)
 
 
     @property
@@ -90,6 +80,15 @@ class YAMLConfig(BaseConfig):
             print('Initial lr: ', self._lr_scheduler.get_last_lr())
 
         return self._lr_scheduler
+    
+    @property
+    def lr_warmup_scheduler(self, ):
+        if self._lr_warmup_scheduler is None and 'lr_warmup_scheduler' in self.yaml_cfg:
+            merge_config(self.yaml_cfg)
+            self._lr_warmup_scheduler = create('lr_warmup_scheduler', lr_scheduler=self.lr_scheduler)
+            print('Warmup scheduler initialized')
+
+        return self._lr_warmup_scheduler
     
     @property
     def train_dataloader(self, ):
@@ -139,6 +138,8 @@ class YAMLConfig(BaseConfig):
         assert 'type' in cfg, ''
         cfg = copy.deepcopy(cfg)
 
+        base_lr = cfg.get('lr', 1e-4)
+
         if 'params' not in cfg:
             return model.parameters() 
 
@@ -150,6 +151,9 @@ class YAMLConfig(BaseConfig):
             pattern = pg['params']
             params = {k: v for k, v in model.named_parameters() if v.requires_grad and len(re.findall(pattern, k)) > 0}
             pg['params'] = params.values()
+            # automatically handle lr_mult
+            lr_mult = pg.get('lr_mult', 1.0)
+            pg['lr'] = base_lr * lr_mult
             param_groups.append(pg)
             visited.extend(list(params.keys()))
 
@@ -158,7 +162,8 @@ class YAMLConfig(BaseConfig):
         if len(visited) < len(names):
             unseen = set(names) - set(visited)
             params = {k: v for k, v in model.named_parameters() if v.requires_grad and k in unseen}
-            param_groups.append({'params': params.values()})
+            # default lr_mult=1.0
+            param_groups.append({'params': params.values(), 'lr': base_lr})
             visited.extend(list(params.keys()))
 
         assert len(visited) == len(names), ''

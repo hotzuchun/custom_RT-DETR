@@ -1,0 +1,60 @@
+use_ema: True 
+ema:
+  type: ModelEMA
+  decay: 0.9999
+  warmups: 2000
+
+
+find_unused_parameters: True 
+
+epoches: 50
+clip_max_norm: 0.1
+
+optimizer:
+  type: AdamW
+  params: 
+    - 
+      params: 'backbone'
+      lr_mult: 0.15
+    - 
+      params: '^(?=.*encoder(?=.*bias|.*norm.*weight)).*$'
+      weight_decay: 0.
+    -
+      params: '^(?=.*decoder(?=.*bias|.*norm.*weight)).*$'
+      weight_decay: 0.
+
+    
+  lr: 0.0006
+  betas: [0.9, 0.999]
+  weight_decay: 0.0001
+
+# ============lr_scheduler==================
+# Standard Cosine Annealing Learning Rate Scheduler
+lr_scheduler:
+  type: CosineAnnealingLR
+  T_max: 50          # total number of training epochs
+  eta_min: 0.00006  # minimum learning rate
+
+# # Cosine Annealing Warm Restarts Learning Rate Scheduler
+# lr_scheduler:
+#   type: CosineAnnealingWarmRestarts
+#   T_0: 18              # length of first cycle (72/4=18)
+#   T_mult: 2            # cycle length multiplier
+#   eta_min: 0.00001     # minimum learning rate 
+
+# # Aggressive Cosine Annealing Learning Rate Scheduler (more frequent restarts)
+# lr_scheduler:
+#   type: CosineAnnealingWarmRestarts
+#   T_0: 12              # length of first cycle (72/6=12)
+#   T_mult: 1            # cycle length remains constant
+#   eta_min: 0.000001    # smaller minimum learning rate 
+
+
+# ============warmup_scheduler==================
+# warmup, learning rate from 0.00008 to 0.0008
+# lr_warmup_scheduler:
+#   type: LinearWarmup
+#   start_lr: 0.00008  # initial learning rate
+#   end_lr: 0.0008     # warmup end learning rate
+#   warmup_duration: 780  # warn up for 4 epochs * 195 steps per epoch = 780 steps(steps depends on your dataset size)
+#   last_step: -1

@@ -1,15 +1,3 @@
-"""
-Enhanced RT-DETR Implementation
-Based on the original RT-DETR project by lyuwenyu
-
-Original Repository: https://github.com/lyuwenyu/RT-DETR
-Original Authors: Yian Zhao, Wenyu Lv, Shangliang Xu, Jinman Wei, 
-                  Guanzhong Wang, Qingqing Dang, Yi Liu, Jie Chen
-Original License: Apache License 2.0
-
-This is an enhanced implementation with improvements and modifications
-while maintaining compatibility with the original RT-DETR architecture.
-"""
 
 """
 
@@ -22,19 +10,22 @@ by lyuwenyu
 import math
 import os
 import sys
+import time
 import pathlib
-from typing import Iterable
+from typing import Iterable, Optional
 
 import torch
-import torch.amp 
 
-from src.data import CocoEvaluator
-from src.misc import (MetricLogger, SmoothedValue, reduce_dict)
+import src.misc.dist as dist
+from src.data.coco.coco_eval import CocoEvaluator
+from src.misc.logger import MetricLogger, SmoothedValue, reduce_dict
+from src.misc.custom_processor import YOLOEnhancedLogger
 
 
 def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                     data_loader: Iterable, optimizer: torch.optim.Optimizer,
-                    device: torch.device, epoch: int, max_norm: float = 0, **kwargs):
+                    device: torch.device, epoch: int, max_norm: float = 0, 
+                    enhanced_logger: YOLOEnhancedLogger = None, **kwargs):
     model.train()
     criterion.train()
     metric_logger = MetricLogger(delimiter="  ")
@@ -45,10 +36,18 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     
     ema = kwargs.get('ema', None)
     scaler = kwargs.get('scaler', None)
+    lr_warmup_scheduler = kwargs.get('lr_warmup_scheduler', None)
+    
+    # record the start time of the epoch
+    epoch_start_time = time.time()
+    total_samples = 0
 
-    for samples, targets in metric_logger.log_every(data_loader, print_freq, header):
+    for i, (samples, targets) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+        step_start_time = time.time()
         samples = samples.to(device)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
+        batch_size = samples.tensor.shape[0] if hasattr(samples, 'tensor') else samples.shape[0]
+        total_samples += batch_size
 
         if scaler is not None:
             with torch.autocast(device_type=str(device), cache_enabled=True):
@@ -85,6 +84,9 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         if ema is not None:
             ema.update(model)
 
+        if lr_warmup_scheduler is not None:
+            lr_warmup_scheduler.step()
+
         loss_dict_reduced = reduce_dict(loss_dict)
         loss_value = sum(loss_dict_reduced.values())
 
@@ -95,16 +97,44 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
         metric_logger.update(loss=loss_value, **loss_dict_reduced)
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
+        
+        if enhanced_logger is not None:
+            step_time = time.time() - step_start_time
+            step_metrics = {
+                'loss': loss_value,
+                **{k: v.item() if torch.is_tensor(v) else v for k, v in loss_dict_reduced.items()}
+            }
+            
+            enhanced_logger.log_train_step(
+                epoch=epoch,
+                step=i,
+                metrics=step_metrics,
+                lr=optimizer.param_groups[0]["lr"],
+                batch_size=batch_size,
+                time_per_step=step_time
+            )
 
-    # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
+    
+    epoch_time = time.time() - epoch_start_time
+    samples_per_sec = total_samples / epoch_time if epoch_time > 0 else 0
+    
+    if enhanced_logger is not None:
+        epoch_metrics = {k: meter.global_avg for k, meter in metric_logger.meters.items()}
+        enhanced_logger.log_train_epoch(
+            epoch=epoch,
+            metrics=epoch_metrics,
+            total_time=epoch_time,
+            samples_per_sec=samples_per_sec
+        )
+    
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
 
 
 @torch.no_grad()
-def evaluate(model: torch.nn.Module, criterion: torch.nn.Module, postprocessors, data_loader, base_ds, device, output_dir):
+def evaluate(model: torch.nn.Module, criterion: torch.nn.Module, postprocessors, data_loader, base_ds, device, output_dir, enhanced_logger: YOLOEnhancedLogger = None, epoch: int = 0):
     model.eval()
     criterion.eval()
 
@@ -125,9 +155,14 @@ def evaluate(model: torch.nn.Module, criterion: torch.nn.Module, postprocessors,
     #         output_dir=os.path.join(output_dir, "panoptic_eval"),
     #     )
 
+    val_start_time = time.time()
+    total_samples = 0
+
     for samples, targets in metric_logger.log_every(data_loader, 10, header):
         samples = samples.to(device)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
+        batch_size = samples.tensor.shape[0] if hasattr(samples, 'tensor') else samples.shape[0]
+        total_samples += batch_size
 
         # with torch.autocast(device_type=str(device)):
         #     outputs = model(samples)
@@ -185,6 +220,10 @@ def evaluate(model: torch.nn.Module, criterion: torch.nn.Module, postprocessors,
     # if panoptic_evaluator is not None:
     #     panoptic_res = panoptic_evaluator.summarize()
     
+    # 记录验证时间
+    val_time = time.time() - val_start_time
+    samples_per_sec = total_samples / val_time if val_time > 0 else 0
+    
     stats = {}
     # stats = {k: meter.global_avg for k, meter in metric_logger.meters.items()}
     if coco_evaluator is not None:
@@ -197,7 +236,15 @@ def evaluate(model: torch.nn.Module, criterion: torch.nn.Module, postprocessors,
     #     stats['PQ_all'] = panoptic_res["All"]
     #     stats['PQ_th'] = panoptic_res["Things"]
     #     stats['PQ_st'] = panoptic_res["Stuff"]
-
+    
+    if enhanced_logger is not None:
+        enhanced_logger.log_val_epoch(
+            epoch=epoch,  # 使用传入的epoch参数
+            metrics=stats,
+            total_time=val_time,
+            samples_per_sec=samples_per_sec
+        )
+    
     return stats, coco_evaluator
 
 

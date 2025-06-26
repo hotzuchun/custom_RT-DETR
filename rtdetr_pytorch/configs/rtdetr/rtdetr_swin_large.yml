@@ -2,8 +2,8 @@ __include__: [
   '../dataset/coco_detection.yml',
   '../runtime.yml',
   './include/dataloader.yml',
-  './include/optimizer.yml',
-  './include/rtdetr_swin.yml',
+  './include/custom_optimizer.yml',
+  './include/rtdetr_swin_spec.yml',
 ]
 
 output_dir: ./output/rtdetr_swin_large
@@ -19,27 +19,16 @@ SwinTransformer:
 HybridEncoder:
   in_channels: [192, 384, 768]
   hidden_dim: 256
-  expansion: 1.0
+  expansion: 0.5
 
 RTDETRTransformer:
   eval_idx: -1
-  num_decoder_layers: 6
+  num_queries: 400
+  num_decoder_layers: 8
   num_denoising: 100
 
 optimizer:
   type: AdamW
-  params: 
-    - 
-      params: '^(?=.*backbone)(?=.*norm).*$'
-      lr: 0.00001
-      weight_decay: 0.
-    - 
-      params: '^(?=.*backbone)(?!.*norm).*$'
-      lr: 0.00001
-    - 
-      params: '^(?=.*(?:encoder|decoder))(?=.*(?:norm|bias)).*$'
-      weight_decay: 0.
 
-  lr: 0.0001
-  betas: [0.9, 0.999]
-  weight_decay: 0.0001 
+lr_scheduler:
+  type: CosineAnnealingLR

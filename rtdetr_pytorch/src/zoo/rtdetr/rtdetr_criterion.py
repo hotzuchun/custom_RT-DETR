@@ -1,15 +1,3 @@
-"""
-Enhanced RT-DETR Implementation
-Based on the original RT-DETR project by lyuwenyu
-
-Original Repository: https://github.com/lyuwenyu/RT-DETR
-Original Authors: Yian Zhao, Wenyu Lv, Shangliang Xu, Jinman Wei, 
-                  Guanzhong Wang, Qingqing Dang, Yi Liu, Jie Chen
-Original License: Apache License 2.0
-
-This is an enhanced implementation with improvements and modifications
-while maintaining compatibility with the original RT-DETR architecture.
-"""
 
 """
 
@@ -79,7 +67,9 @@ class SetCriterion(nn.Module):
                                     dtype=torch.int64, device=src_logits.device)
         target_classes[idx] = target_classes_o
 
-        loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)
+        # 确保empty_weight与src_logits具有相同的数据类型
+        empty_weight = self.empty_weight.to(src_logits.dtype)
+        loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, empty_weight)
         losses = {'loss_ce': loss_ce}
 
         if log:
@@ -96,6 +86,8 @@ class SetCriterion(nn.Module):
         target_classes[idx] = target_classes_o
 
         target = F.one_hot(target_classes, num_classes=self.num_classes + 1)[..., :-1]
+        target = target.to(src_logits.dtype)
+        
         loss = F.binary_cross_entropy_with_logits(src_logits, target * 1., reduction='none')
         loss = loss.mean(1).sum() * src_logits.shape[1] / num_boxes
         return {'loss_bce': loss}
@@ -111,12 +103,8 @@ class SetCriterion(nn.Module):
         target_classes[idx] = target_classes_o
 
         target = F.one_hot(target_classes, num_classes=self.num_classes+1)[..., :-1]
-        # ce_loss = F.binary_cross_entropy_with_logits(src_logits, target * 1., reduction="none")
-        # prob = F.sigmoid(src_logits) # TODO .detach()
-        # p_t = prob * target + (1 - prob) * (1 - target)
-        # alpha_t = self.alpha * target + (1 - self.alpha) * (1 - target)
-        # loss = alpha_t * ce_loss * ((1 - p_t) ** self.gamma)
-        # loss = loss.mean(1).sum() * src_logits.shape[1] / num_boxes
+        target = target.to(src_logits.dtype)
+        
         loss = torchvision.ops.sigmoid_focal_loss(src_logits, target, self.alpha, self.gamma, reduction='none')
         loss = loss.mean(1).sum() * src_logits.shape[1] / num_boxes
 
@@ -137,6 +125,7 @@ class SetCriterion(nn.Module):
                                     dtype=torch.int64, device=src_logits.device)
         target_classes[idx] = target_classes_o
         target = F.one_hot(target_classes, num_classes=self.num_classes + 1)[..., :-1]
+        target = target.to(src_logits.dtype)
 
         target_score_o = torch.zeros_like(target_classes, dtype=src_logits.dtype)
         target_score_o[idx] = ious.to(target_score_o.dtype)
@@ -182,6 +171,31 @@ class SetCriterion(nn.Module):
                 box_cxcywh_to_xyxy(src_boxes),
                 box_cxcywh_to_xyxy(target_boxes)))
         losses['loss_giou'] = loss_giou.sum() / num_boxes
+        return losses
+    
+    # Boundary Loss by HO TZU CHUN
+    def loss_boxes_boundary(self, outputs, targets, indices, num_boxes):
+        """
+        Compute the L1 loss for the four edges of the bounding boxes.
+        """
+        assert 'pred_boxes' in outputs
+        idx = self._get_src_permutation_idx(indices)
+        src_boxes = outputs['pred_boxes'][idx]
+        target_boxes = torch.cat([t['boxes'][i] for t, (_, i) in zip(targets, indices)], dim=0)
+
+        src_xyxy = box_cxcywh_to_xyxy(src_boxes)
+        target_xyxy = box_cxcywh_to_xyxy(target_boxes)
+
+        loss_x1 = F.l1_loss(src_xyxy[:, 0], target_xyxy[:, 0], reduction='none')
+        loss_y1 = F.l1_loss(src_xyxy[:, 1], target_xyxy[:, 1], reduction='none')
+        loss_x2 = F.l1_loss(src_xyxy[:, 2], target_xyxy[:, 2], reduction='none')
+        loss_y2 = F.l1_loss(src_xyxy[:, 3], target_xyxy[:, 3], reduction='none')
+        
+        loss_boundary = loss_x1 + loss_y1 + loss_x2 + loss_y2
+        
+        losses = {}
+        losses['loss_boxes_boundary'] = loss_boundary.sum() / num_boxes
+        
         return losses
 
     def loss_masks(self, outputs, targets, indices, num_boxes):
@@ -231,7 +245,7 @@ class SetCriterion(nn.Module):
             'cardinality': self.loss_cardinality,
             'boxes': self.loss_boxes,
             'masks': self.loss_masks,
-
+            'boxes_boundary': self.loss_boxes_boundary,
             'bce': self.loss_labels_bce,
             'focal': self.loss_labels_focal,
             'vfl': self.loss_labels_vfl,
@@ -262,8 +276,11 @@ class SetCriterion(nn.Module):
         losses = {}
         for loss in self.losses:
             l_dict = self.get_loss(loss, outputs, targets, indices, num_boxes)
-            l_dict = {k: l_dict[k] * self.weight_dict[k] for k in l_dict if k in self.weight_dict}
-            losses.update(l_dict)
+            for k, v in l_dict.items():
+                if k in self.weight_dict:
+                    losses[k] = v * self.weight_dict[k]
+                else:
+                    losses[k] = v
 
         # In case of auxiliary losses, we repeat this process with the output of each intermediate layer.
         if 'aux_outputs' in outputs:
@@ -279,9 +296,11 @@ class SetCriterion(nn.Module):
                         kwargs = {'log': False}
 
                     l_dict = self.get_loss(loss, aux_outputs, targets, indices, num_boxes, **kwargs)
-                    l_dict = {k: l_dict[k] * self.weight_dict[k] for k in l_dict if k in self.weight_dict}
-                    l_dict = {k + f'_aux_{i}': v for k, v in l_dict.items()}
-                    losses.update(l_dict)
+                    for k, v in l_dict.items():
+                        if k in self.weight_dict:
+                            losses[k + f'_aux_{i}'] = v * self.weight_dict[k]
+                        else:
+                            losses[k + f'_aux_{i}'] = v
 
         # In case of cdn auxiliary losses. For rtdetr
         if 'dn_aux_outputs' in outputs:
@@ -301,9 +320,11 @@ class SetCriterion(nn.Module):
                         kwargs = {'log': False}
 
                     l_dict = self.get_loss(loss, aux_outputs, targets, indices, num_boxes, **kwargs)
-                    l_dict = {k: l_dict[k] * self.weight_dict[k] for k in l_dict if k in self.weight_dict}
-                    l_dict = {k + f'_dn_{i}': v for k, v in l_dict.items()}
-                    losses.update(l_dict)
+                    for k, v in l_dict.items():
+                        if k in self.weight_dict:
+                            losses[k + f'_dn_{i}'] = v * self.weight_dict[k]
+                        else:
+                            losses[k + f'_dn_{i}'] = v
 
         return losses
 

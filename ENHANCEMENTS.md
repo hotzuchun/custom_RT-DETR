@@ -25,10 +25,23 @@ This is a modification of RT-DETR, you can train in your custom dataset and ther
 - Optimized configurations for different Swin variants
 - Improved feature extraction pipeline for transformer-based backbones
 
-### 3. Dependencies
+### 3. Improved Optimizer
+- warmup supported
+- customize your learning schedule 
+
+### 4. Improved Traing Result Demonstration
+
+### 5. Box Boundary Loss Supported
+
+## Dependencies
 
 #### New Dependencies
 - **timm>=0.9.0**: Required for Swin Transformer and ConvNeXt backbone networks
+- **matplotlib>=3.5.0**
+- **pandas>=1.3.0**
+- **numpy>=1.21.0**
+- **seaborn>=0.11.0**
+- **scikit-learn>=1.0.0**
 - All original dependencies are preserved for compatibility
 
 ## Acknowledgments

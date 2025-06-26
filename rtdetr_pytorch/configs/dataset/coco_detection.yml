@@ -6,22 +6,22 @@
 
 task: detection
 
-num_classes: # Your own number of classes + 1
+num_classes:  # number of classes + 1
 remap_mscoco_category: False
 
 train_dataloader: 
   type: DataLoader
   dataset: 
     type: CocoDetection
-    # Your own data path
-    img_folder: ./data/train/images
-    ann_file: ./data/train/annotations.json
+    # Your own dataset's path
+    img_folder: 
+    ann_file: 
     transforms:
       type: Compose
       ops: ~
   shuffle: True
-  batch_size: 8
-  num_workers: 4
+  batch_size: 16
+  num_workers: 6
   drop_last: True 
 
 
@@ -29,14 +29,14 @@ val_dataloader:
   type: DataLoader
   dataset: 
     type: CocoDetection
-    # Your own data path
-    img_folder: ./data/val/images
-    ann_file: ./data/val/annotations.json
+    # Your own dataset's path
+    img_folder: 
+    ann_file: 
     transforms:
       type: Compose
       ops: ~ 
 
-  shuffle: False
-  batch_size: 8
-  num_workers: 4
-  drop_last: False
+  shuffle: True
+  batch_size: 32
+  num_workers: 6
+  drop_last: True

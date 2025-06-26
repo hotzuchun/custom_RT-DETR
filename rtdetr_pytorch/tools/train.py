@@ -1,16 +1,3 @@
-"""
-Enhanced RT-DETR Implementation
-Based on the original RT-DETR project by lyuwenyu
-
-Original Repository: https://github.com/lyuwenyu/RT-DETR
-Original Authors: Yian Zhao, Wenyu Lv, Shangliang Xu, Jinman Wei, 
-                  Guanzhong Wang, Qingqing Dang, Yi Liu, Jie Chen
-Original License: Apache License 2.0
-
-This is an enhanced implementation with improvements and modifications
-while maintaining compatibility with the original RT-DETR architecture.
-"""
-
 """by lyuwenyu
 
 """
@@ -39,7 +26,6 @@ def main(args, ) -> None:
         args.config,
         resume=args.resume, 
         use_amp=args.amp,
-        tuning=args.tuning
     )
 
     solver = TASKS[cfg.yaml_cfg['task']](cfg)
@@ -53,13 +39,12 @@ def main(args, ) -> None:
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--epochs', '-e', type=int, )
-    parser.add_argument('--config', '-c', type=str, )
-    parser.add_argument('--resume', '-r', type=str, )
-    parser.add_argument('--tuning', '-t', type=str, )
+    parser.add_argument('--config', '-c', type=str, ) # train from scratch
+    parser.add_argument('--resume', '-r', type=str, ) # resume from the checkpoint
+    parser.add_argument('--tuning', '-t', type=str, ) # tuning the model
     parser.add_argument('--test-only', action='store_true', default=False,)
     parser.add_argument('--amp', action='store_true', default=True,)
-    parser.add_argument('--seed', type=int, help='seed',)
+    parser.add_argument('--seed', type=int, help='seed',default=42)
     args = parser.parse_args()
 
     main(args)

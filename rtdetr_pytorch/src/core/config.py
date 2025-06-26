@@ -1,16 +1,3 @@
-"""
-Enhanced RT-DETR Implementation
-Based on the original RT-DETR project by lyuwenyu
-
-Original Repository: https://github.com/lyuwenyu/RT-DETR
-Original Authors: Yian Zhao, Wenyu Lv, Shangliang Xu, Jinman Wei, 
-                  Guanzhong Wang, Qingqing Dang, Yi Liu, Jie Chen
-Original License: Apache License 2.0
-
-This is an enhanced implementation with improvements and modifications
-while maintaining compatibility with the original RT-DETR architecture.
-"""
-
 """by lyuwenyu
 
 """
@@ -44,6 +31,7 @@ class BaseConfig(object):
         self._criterion :nn.Module = None 
         self._optimizer :Optimizer = None 
         self._lr_scheduler :LRScheduler = None 
+        self._lr_warmup_scheduler :LRScheduler = None 
         self._train_dataloader :DataLoader = None 
         self._val_dataloader :DataLoader = None 
         self._ema :nn.Module = None 
@@ -133,6 +121,14 @@ class BaseConfig(object):
     def lr_scheduler(self, m):
         assert isinstance(m, LRScheduler), f'{type(m)} != LRScheduler, please check your model class'
         self._lr_scheduler = m 
+
+    @property
+    def lr_warmup_scheduler(self, ) -> LRScheduler:
+        return self._lr_warmup_scheduler
+    
+    @lr_warmup_scheduler.setter
+    def lr_warmup_scheduler(self, m):
+        self._lr_warmup_scheduler = m
 
 
     @property
